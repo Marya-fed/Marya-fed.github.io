@@ -1,867 +1,506 @@
 /* ==========================================================================
-   МОЛОДОСТЬ — салон красоты
-   Общий стиль сайта
+   МОЛОДОСТЬ — общий JS: хедер/футер, мобильное меню, всплывающие формы,
+   отправка форм, FAQ-аккордеон, горизонтальные карусели
    ========================================================================== */
 
-/* ---- Fonts ---- */
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+SC:wght@400;500;600;700&family=Roboto:wght@300;400;500;700&display=swap');
+/* ---------------------------------------------------------------------
+   0. НАСТРОЙКА ОТПРАВКИ ФОРМ
+   ---------------------------------------------------------------------
+   Формы (запись, обратный звонок, вопрос из футера) отправляются через
+   Formspree — сервис, который принимает POST-запрос и пересылает данные
+   вам на почту, без своего сервера.
 
-/* ---- Tokens ---- */
-:root {
-  --black: #141210;
-  --black-2: #1b1815;
-  --card-bg: #222019;
-  --card-bg-2: #2a2722;
-  --gray-line: rgba(255, 255, 255, 0.12);
-  --white: #ffffff;
-  --white-70: rgba(255, 255, 255, 0.7);
-  --white-50: rgba(255, 255, 255, 0.5);
-  --gold-1: #b79c5b;
-  --gold-2: #e7cf95;
-  --gold-gradient: linear-gradient(135deg, #b79c5b 0%, #e7cf95 50%, #b79c5b 100%);
-  --overlay-20: rgba(0, 0, 0, 0.2);
-  --overlay-60: rgba(10, 9, 8, 0.6);
-  --overlay-80: rgba(10, 9, 8, 0.85);
-  --radius-s: 8px;
-  --radius-m: 16px;
-  --radius-l: 28px;
-  --container: 1280px;
-  --header-h: 92px;
-  --header-h-mobile: 64px;
-  --ease: cubic-bezier(0.16, 1, 0.3, 1);
-}
+   Как подключить (5 минут):
+   1. Зарегистрируйтесь на https://formspree.io (бесплатный тариф — до
+      50 писем в месяц, этого достаточно для старта).
+   2. Создайте новый Form, укажите почту, на которую будут приходить заявки.
+   3. Formspree выдаст endpoint вида: https://formspree.io/f/xxxxxxxx
+   4. Вставьте этот адрес вместо строки ниже (FORM_ENDPOINT).
+   5. Готово — все формы на сайте (в шапке, в карточках услуг, в футере)
+      начнут присылать заявки вам на почту.
 
-/* ---- Reset ---- */
-* { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; }
-body {
-  background: var(--black);
-  color: var(--white);
-  font-family: 'Roboto', sans-serif;
-  font-weight: 300;
-  line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
-}
-img { max-width: 100%; display: block; }
-a { color: inherit; text-decoration: none; }
-button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
-input, textarea { font-family: inherit; }
-ul { list-style: none; }
+   Если хотите получать заявки в Telegram — могу сделать вариант через
+   Telegram Bot API вместо Formspree, просто скажите.
+------------------------------------------------------------------------ */
+const FORM_ENDPOINT = 'https://formspree.io/f/YOUR_FORM_ID'; // <-- замените на свой
 
-h1, h2, h3, h4, .font-display {
-  font-family: 'Cormorant SC', serif;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  line-height: 1.1;
-}
+/* ---------------------------------------------------------------------
+   1. ДАННЫЕ НАВИГАЦИИ / ШАПКА / ПОДВАЛ
+   ------------------------------------------------------------------ */
+const NAV_ITEMS = [
+  { label: 'Услуги', href: 'index.html#services', key: 'services' },
+  { label: 'Мастера', href: 'index.html#masters', key: 'masters' },
+  { label: 'Портфолио', href: 'portfolio.html', key: 'portfolio' },
+  { label: 'Отзывы', href: 'index.html#reviews', key: 'reviews' },
+  { label: 'Блог', href: 'index.html#blog', key: 'blog' },
+  { label: 'О салоне', href: 'index.html#about', key: 'about' },
+  { label: 'Контакты', href: 'index.html#contacts', key: 'contacts' },
+];
 
-.container {
-  max-width: var(--container);
-  margin: 0 auto;
-  padding: 0 40px;
-}
+const LOGO_SVG = `<svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M20 3L24 14L35 12L27 20L35 28L24 26L20 37L16 26L5 28L13 20L5 12L16 14L20 3Z" stroke="url(#lg)" stroke-width="1.4" stroke-linejoin="round"/>
+  <defs><linearGradient id="lg" x1="5" y1="3" x2="35" y2="37"><stop stop-color="#B79C5B"/><stop offset="0.5" stop-color="#E7CF95"/><stop offset="1" stop-color="#B79C5B"/></linearGradient></defs>
+</svg>`;
 
-.gold-text {
-  background: var(--gold-gradient);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-.eyebrow {
-  font-size: 13px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--gold-2);
-  margin-bottom: 14px;
-  display: block;
+function headerTemplate() {
+  return `
+  <div class="header-inner">
+    <a href="index.html" class="logo">
+      <span class="logo-mark">${LOGO_SVG}</span>
+      <span class="logo-text"><span class="l1">Молодость</span><span class="l2">Салон красоты</span></span>
+    </a>
+    <nav class="main-nav">
+      ${NAV_ITEMS.map(i => `<a href="${i.href}" data-key="${i.key}">${i.label}</a>`).join('')}
+    </nav>
+    <div class="header-right">
+      <span class="header-note">Мы работаем без выходных</span>
+      <button class="btn btn-gold btn-sm header-cta" data-open-modal="booking">Записаться</button>
+      <div class="header-phone">
+        <a href="tel:+375298151994">+375 29 815-19-94 (МТС)</a>
+        <a href="tel:+37515511994" class="sub">51-19-94 (Стационарный)</a>
+      </div>
+    </div>
+    <button class="burger-btn" id="burgerBtn" aria-label="Открыть меню">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+  <div class="mobile-nav" id="mobileNav">
+    ${NAV_ITEMS.map(i => `<a class="mnav-link" href="${i.href}" data-key="${i.key}">${i.label} <span>›</span></a>`).join('')}
+    <button class="btn btn-gold btn-block mnav-cta" data-open-modal="booking">Записаться</button>
+    <div class="mnav-contacts">
+      <a href="tel:+375298151994"><span class="badge"></span>+375 29 815-19-94 (МТС)</a>
+      <a href="tel:+37515511994"><span class="badge"></span>51-19-94 (Стационарный)</a>
+      <p style="margin-top:10px;">Мы работаем без выходных</p>
+    </div>
+  </div>`;
 }
 
-.section { padding: 100px 0; }
-.section--tight { padding: 70px 0; }
-.section--alt { background: var(--black-2); }
-
-.section-head {
-  text-align: center;
-  max-width: 720px;
-  margin: 0 auto 56px;
-}
-.section-head h2 { font-size: 42px; margin-bottom: 14px; }
-.section-head p { color: var(--white-70); font-size: 16px; }
-.section-head.align-left { text-align: left; margin: 0 0 48px; }
-
-/* Focus visibility */
-a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible {
-  outline: 2px solid var(--gold-2);
-  outline-offset: 3px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
-}
-
-/* ==========================================================================
-   Buttons
-   ========================================================================== */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 16px 34px;
-  border-radius: 50px;
-  font-size: 15px;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  transition: transform 0.25s var(--ease), box-shadow 0.25s var(--ease), opacity 0.25s var(--ease);
-  white-space: nowrap;
-}
-.btn-gold {
-  background: var(--gold-gradient);
-  color: #221a0c;
-}
-.btn-gold:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(183, 156, 91, 0.35); }
-.btn-outline {
-  border: 1px solid var(--gray-line);
-  color: var(--white);
-  background: transparent;
-}
-.btn-outline:hover { border-color: var(--gold-2); color: var(--gold-2); }
-.btn-sm { padding: 12px 24px; font-size: 14px; }
-.btn-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--gold-2);
-  font-size: 14px;
-  font-weight: 500;
-  transition: gap 0.2s var(--ease);
-}
-.btn-link:hover { gap: 10px; }
-.btn-block { width: 100%; }
-.btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none !important; }
-
-/* ==========================================================================
-   Header
-   ========================================================================== */
-.site-header {
-  position: fixed;
-  top: 0; left: 0; right: 0;
-  z-index: 500;
-  height: var(--header-h);
-  display: flex;
-  align-items: center;
-  background: rgba(20, 18, 16, 0.88);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid var(--gray-line);
-}
-.header-inner {
-  max-width: var(--container);
-  margin: 0 auto;
-  padding: 0 40px;
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 32px;
-}
-.logo {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-family: 'Cormorant SC', serif;
-  margin-right: 8px;
-}
-.logo-mark {
-  width: 34px; height: 34px;
-  flex-shrink: 0;
-}
-.logo-mark svg { width: 100%; height: 100%; }
-.logo-text { display: flex; flex-direction: column; line-height: 1.1; }
-.logo-text .l1 {
-  font-size: 19px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  background: var(--gold-gradient);
-  -webkit-background-clip: text; background-clip: text; color: transparent;
-}
-.logo-text .l2 {
-  font-family: 'Roboto', sans-serif;
-  font-size: 10px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--white-50);
+function footerTemplate() {
+  return `
+  <div class="container">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <a href="index.html" class="logo">
+          <span class="logo-mark">${LOGO_SVG}</span>
+          <span class="logo-text"><span class="l1">Молодость</span><span class="l2">Салон красоты</span></span>
+        </a>
+        <p>Центр красоты, косметологии и парикмахерского искусства в Орше. Работаем по медицинской лицензии.</p>
+        <div class="socials" style="margin-top:18px;">
+          <a href="#" aria-label="Instagram">IG</a>
+          <a href="#" aria-label="YouTube">YT</a>
+        </div>
+      </div>
+      <div class="footer-col">
+        <h5>Услуги</h5>
+        <ul>
+          <li><a href="hair.html">Уход за волосами</a></li>
+          <li><a href="nails.html">Уход за ногтями</a></li>
+          <li><a href="brows.html">Уход за бровями и ресницами</a></li>
+          <li><a href="face.html">Уход за лицом</a></li>
+          <li><a href="massage.html">Массаж & SPA</a></li>
+          <li><a href="makeup.html">Визаж</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h5>Меню</h5>
+        <ul>
+          <li><a href="index.html#services">Услуги</a></li>
+          <li><a href="portfolio.html">Портфолио</a></li>
+          <li><a href="index.html#reviews">Отзывы</a></li>
+          <li><a href="index.html#blog">Блог</a></li>
+          <li><a href="index.html#contacts">Контакты</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h5>Документы</h5>
+        <ul>
+          <li><a href="#">Лицензия</a></li>
+          <li><a href="#">Политика согласия обработки данных</a></li>
+          <li><a href="#">Оферта</a></li>
+          <li><a href="#">Политика конфиденциальности</a></li>
+          <li><a href="#">Политика куки-файлов</a></li>
+        </ul>
+      </div>
+      <div class="footer-form">
+        <h5>Задать вопрос</h5>
+        <p>Напишите нам, и мы перезвоним в течение 30 минут.</p>
+        <form id="footerQuickForm" novalidate>
+          <div class="footer-form-row">
+            <input type="tel" name="phone" placeholder="Ваш номер телефона" required>
+            <button type="submit" class="btn btn-gold btn-sm">Отправить</button>
+          </div>
+          <div class="form-status" data-status></div>
+          <small>*Даю согласие на обработку моих персональных данных<br>*Ознакомлен(а) с политикой конфиденциальности</small>
+        </form>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 «ЧУП Молодость», все права защищены</span>
+      <div class="legal-links">
+        <a href="#">Политика конфиденциальности</a>
+        <a href="#">Оферта</a>
+        <a href="#">Политика куки</a>
+      </div>
+    </div>
+  </div>`;
 }
 
-.main-nav { display: flex; align-items: center; gap: 28px; flex: 1; }
-.main-nav a {
-  font-size: 14.5px;
-  color: var(--white-70);
-  position: relative;
-  padding: 6px 0;
-  transition: color 0.2s;
-}
-.main-nav a:hover, .main-nav a.active { color: var(--white); }
-.main-nav a.active::after {
-  content: '';
-  position: absolute;
-  left: 0; right: 0; bottom: -2px;
-  height: 1px;
-  background: var(--gold-gradient);
+/* ---------------------------------------------------------------------
+   2. ВСПЛЫВАЮЩИЕ ФОРМЫ (МОДАЛЬНЫЕ ОКНА)
+   ------------------------------------------------------------------ */
+function modalsTemplate() {
+  return `
+  <div class="modal-overlay" id="modal-booking" data-modal>
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="bookingTitle">
+      <button class="modal-close" data-close-modal aria-label="Закрыть">✕</button>
+      <div class="modal-content-inner">
+        <span class="modal-eyebrow">Онлайн-запись</span>
+        <h3 id="bookingTitle">Записаться в салон</h3>
+        <p class="modal-sub">Оставьте телефон — администратор свяжется с вами и подберёт удобное время.</p>
+        <form data-ajax-form data-form-name="Запись в салон" novalidate>
+          <div class="form-status" data-status></div>
+          <div class="form-field">
+            <label for="b-name">Имя</label>
+            <input id="b-name" type="text" name="name" placeholder="Как к вам обращаться" required>
+            <div class="form-error">Пожалуйста, введите имя</div>
+          </div>
+          <div class="form-field">
+            <label for="b-phone">Телефон</label>
+            <input id="b-phone" type="tel" name="phone" placeholder="+375 (__) ___-__-__" required>
+            <div class="form-error">Введите корректный номер телефона</div>
+          </div>
+          <div class="form-field">
+            <label for="b-service">Услуга</label>
+            <select id="b-service" name="service">
+              <option>Уход за волосами</option>
+              <option>Уход за лицом</option>
+              <option>Уход за ногтями</option>
+              <option>Визаж</option>
+              <option>Брови и ресницы</option>
+              <option>Массаж & SPA</option>
+              <option>Ещё не выбрал(а)</option>
+            </select>
+          </div>
+          <div class="form-consent">
+            <input type="checkbox" id="b-consent" required>
+            <label for="b-consent">Даю согласие на обработку персональных данных и ознакомлен(а) с <a href="#">политикой конфиденциальности</a></label>
+          </div>
+          <button type="submit" class="btn btn-gold btn-block">Записаться</button>
+        </form>
+      </div>
+      <div class="modal-success" data-success-view hidden>
+        <div class="ic-check">✓</div>
+        <h3>Заявка отправлена</h3>
+        <p>Спасибо! Мы свяжемся с вами в ближайшее время, чтобы подтвердить запись.</p>
+        <button class="btn btn-outline btn-block" data-close-modal>Закрыть</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-callback" data-modal>
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="callbackTitle">
+      <button class="modal-close" data-close-modal aria-label="Закрыть">✕</button>
+      <div class="modal-content-inner">
+        <span class="modal-eyebrow">Обратный звонок</span>
+        <h3 id="callbackTitle">Перезвоним вам</h3>
+        <p class="modal-sub">Оставьте номер — перезвоним в течение 30 минут в рабочее время.</p>
+        <form data-ajax-form data-form-name="Обратный звонок" novalidate>
+          <div class="form-status" data-status></div>
+          <div class="form-field">
+            <label for="c-phone">Телефон</label>
+            <input id="c-phone" type="tel" name="phone" placeholder="+375 (__) ___-__-__" required>
+            <div class="form-error">Введите корректный номер телефона</div>
+          </div>
+          <div class="form-consent">
+            <input type="checkbox" id="c-consent" required>
+            <label for="c-consent">Даю согласие на обработку персональных данных</label>
+          </div>
+          <button type="submit" class="btn btn-gold btn-block">Жду звонка</button>
+        </form>
+      </div>
+      <div class="modal-success" data-success-view hidden>
+        <div class="ic-check">✓</div>
+        <h3>Спасибо!</h3>
+        <p>Мы перезвоним вам в ближайшее время.</p>
+        <button class="btn btn-outline btn-block" data-close-modal>Закрыть</button>
+      </div>
+    </div>
+  </div>`;
 }
 
-.header-right { display: flex; align-items: center; gap: 22px; margin-left: auto; }
-.header-note {
-  font-size: 12.5px;
-  color: var(--white-50);
-  line-height: 1.3;
-  text-align: right;
-  max-width: 130px;
-}
-.header-phone {
-  text-align: right;
-  font-size: 13.5px;
-  line-height: 1.3;
-}
-.header-phone a { display: block; color: var(--white); }
-.header-phone a:hover { color: var(--gold-2); }
-.header-phone .sub { color: var(--white-50); font-size: 12px; }
+/* ---------------------------------------------------------------------
+   3. ИНИЦИАЛИЗАЦИЯ
+   ------------------------------------------------------------------ */
+document.addEventListener('DOMContentLoaded', () => {
+  // Вставляем хедер/футер/модалки
+  const headerMount = document.getElementById('site-header');
+  const footerMount = document.getElementById('site-footer');
+  if (headerMount) headerMount.innerHTML = headerTemplate();
+  if (footerMount) footerMount.innerHTML = footerTemplate();
+  document.body.insertAdjacentHTML('beforeend', modalsTemplate());
 
-.burger-btn {
-  display: none;
-  width: 40px; height: 40px;
-  align-items: center; justify-content: center;
-  flex-direction: column; gap: 5px;
-  flex-shrink: 0;
-}
-.burger-btn span {
-  width: 22px; height: 1.5px;
-  background: var(--white);
-  transition: transform 0.3s var(--ease), opacity 0.3s var(--ease);
-}
-.burger-btn.is-open span:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
-.burger-btn.is-open span:nth-child(2) { opacity: 0; }
-.burger-btn.is-open span:nth-child(3) { transform: translateY(-6.5px) rotate(-45deg); }
+  markActiveNav();
+  initBurger();
+  initModals();
+  initAjaxForms();
+  initFaq();
+  initHScroll();
+  initPortfolioDrag();
+  initPillFilters();
+  initPhoneMask();
+});
 
-/* Mobile nav drawer */
-.mobile-nav {
-  position: fixed;
-  inset: 0;
-  top: var(--header-h-mobile);
-  background: rgba(15, 13, 11, 0.98);
-  z-index: 480;
-  transform: translateX(100%);
-  transition: transform 0.35s var(--ease);
-  overflow-y: auto;
-  padding: 28px 24px 40px;
-  display: none;
-}
-.mobile-nav.is-open { transform: translateX(0); }
-.mobile-nav a.mnav-link {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 15px 4px;
-  font-size: 18px;
-  border-bottom: 1px solid var(--gray-line);
-}
-.mobile-nav .mnav-cta { margin: 24px 0 18px; }
-.mobile-nav .mnav-contacts { margin-top: 20px; font-size: 14px; color: var(--white-70); }
-.mobile-nav .mnav-contacts a { display: block; color: var(--white); margin-bottom: 6px; }
-.mobile-nav .mnav-contacts .badge {
-  display: inline-block;
-  width: 8px; height: 8px;
-  background: var(--gold-2);
-  border-radius: 2px;
-  margin-right: 8px;
+function markActiveNav() {
+  const page = document.body.dataset.page;
+  if (!page) return;
+  document.querySelectorAll('[data-key]').forEach(el => {
+    if (el.dataset.key === page) el.classList.add('active');
+  });
 }
 
-/* ==========================================================================
-   Breadcrumbs / page hero (inner pages)
-   ========================================================================== */
-.breadcrumbs {
-  padding-top: calc(var(--header-h) + 28px);
-  font-size: 12.5px;
-  color: var(--white-50);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-.breadcrumbs span { color: var(--white-70); }
-
-.page-hero {
-  padding-bottom: 60px;
-  display: grid;
-  grid-template-columns: 1.1fr 1fr;
-  gap: 50px;
-  align-items: center;
-}
-.page-hero h1 { font-size: 46px; margin: 16px 0 18px; }
-.page-hero p { color: var(--white-70); max-width: 480px; margin-bottom: 28px; }
-.page-hero-media {
-  border-radius: var(--radius-l);
-  overflow: hidden;
-  aspect-ratio: 4/5;
-}
-.home-hero { padding-bottom: 40px; }
-.home-hero .page-hero-media { aspect-ratio: 16/11; }
-
-.perk-row {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 18px;
-  margin-top: 44px;
-  padding-top: 34px;
-  border-top: 1px solid var(--gray-line);
-}
-.perk-row.perks-6 { grid-template-columns: repeat(6, 1fr); }
-.perk-item { display: flex; align-items: center; gap: 12px; }
-.perk-item .ic {
-  width: 38px; height: 38px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  background: var(--card-bg);
-  display: flex; align-items: center; justify-content: center;
-  color: var(--gold-2);
-}
-.perk-item .tx { font-size: 13.5px; color: var(--white-70); line-height: 1.3; }
-
-/* ==========================================================================
-   Media placeholders (swap with real photos)
-   ========================================================================== */
-.ph {
-  background:
-    radial-gradient(120% 120% at 20% 10%, rgba(231,207,149,0.16), transparent 55%),
-    linear-gradient(150deg, #2a2622 0%, #1c1a17 60%, #24211c 100%);
-  display: flex;
-  align-items: flex-end;
-  position: relative;
-  overflow: hidden;
-}
-.ph::before {
-  content: '';
-  position: absolute; inset: 0;
-  background: repeating-linear-gradient(135deg, rgba(255,255,255,0.03) 0 2px, transparent 2px 14px);
-}
-.ph .ph-label {
-  position: relative;
-  z-index: 1;
-  padding: 14px 18px;
-  font-size: 12px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--white-50);
+/* ---- Мобильное меню ---- */
+function initBurger() {
+  const btn = document.getElementById('burgerBtn');
+  const nav = document.getElementById('mobileNav');
+  if (!btn || !nav) return;
+  btn.addEventListener('click', () => {
+    const open = nav.classList.toggle('is-open');
+    btn.classList.toggle('is-open', open);
+    document.body.style.overflow = open ? 'hidden' : '';
+  });
+  nav.querySelectorAll('a').forEach(a => a.addEventListener('click', () => {
+    nav.classList.remove('is-open');
+    btn.classList.remove('is-open');
+    document.body.style.overflow = '';
+  }));
 }
 
-/* ==========================================================================
-   Service grid (6 category cards)
-   ========================================================================== */
-.svc-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 22px;
-}
-.svc-card {
-  position: relative;
-  border-radius: var(--radius-m);
-  overflow: hidden;
-  aspect-ratio: 3/3.4;
-  display: flex;
-  align-items: flex-end;
-}
-.svc-card .ph { position: absolute; inset: 0; }
-.svc-card::after {
-  content: '';
-  position: absolute; inset: 0;
-  background: linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,0,0,0.75) 100%);
-}
-.svc-card span {
-  position: relative;
-  z-index: 2;
-  padding: 20px;
-  font-family: 'Cormorant SC', serif;
-  font-size: 20px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-.svc-card { transition: transform 0.4s var(--ease); }
-.svc-card:hover { transform: translateY(-6px); }
-
-/* ==========================================================================
-   Filter pills
-   ========================================================================== */
-.pill-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 40px;
-}
-.pill {
-  padding: 10px 20px;
-  border-radius: 50px;
-  border: 1px solid var(--gray-line);
-  font-size: 13.5px;
-  color: var(--white-70);
-  transition: all 0.2s;
-}
-.pill.is-active, .pill:hover {
-  background: var(--gold-gradient);
-  color: #221a0c;
-  border-color: transparent;
+/* ---- Модальные окна ---- */
+function initModals() {
+  document.querySelectorAll('[data-open-modal]').forEach(btn => {
+    btn.addEventListener('click', () => openModal(btn.dataset.openModal));
+  });
+  document.querySelectorAll('[data-modal]').forEach(overlay => {
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) closeModal(overlay);
+    });
+  });
+  document.querySelectorAll('[data-close-modal]').forEach(btn => {
+    btn.addEventListener('click', () => closeModal(btn.closest('[data-modal]')));
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      document.querySelectorAll('.modal-overlay.is-open').forEach(closeModal);
+    }
+  });
 }
 
-/* ==========================================================================
-   Service detail spotlight (round photo + info)
-   ========================================================================== */
-.spotlight {
-  display: grid;
-  grid-template-columns: 0.9fr 1fr;
-  gap: 60px;
-  align-items: center;
-}
-.spotlight-media {
-  position: relative;
-  aspect-ratio: 1/1;
-}
-.spotlight-media .ring {
-  position: absolute; inset: 0;
-  border-radius: 50%;
-  border: 1px solid var(--gold-2);
-  transform: scale(1.06);
-  pointer-events: none;
-}
-.spotlight-media .ph {
-  border-radius: 50%;
-  width: 100%; height: 100%;
-  overflow: hidden;
-}
-.spotlight h3 { font-size: 34px; margin-bottom: 18px; }
-.price-list { margin: 22px 0 30px; }
-.price-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 13px 0;
-  border-bottom: 1px solid var(--gray-line);
-  font-size: 15px;
-}
-.price-row .amount { color: var(--gold-2); font-weight: 500; }
-.spotlight-actions { display: flex; align-items: center; gap: 22px; }
-
-/* Horizontal scroll carousel (deck of frames) */
-.hscroll-wrap { position: relative; }
-.hscroll {
-  display: flex;
-  gap: 24px;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  padding-bottom: 10px;
-  cursor: grab;
-  scrollbar-width: thin;
-  scrollbar-color: var(--gold-1) transparent;
-}
-.hscroll:active { cursor: grabbing; }
-.hscroll .spotlight {
-  min-width: 100%;
-  scroll-snap-align: start;
-  grid-template-columns: 0.9fr 1fr;
-}
-.hscroll-dots {
-  display: flex;
-  justify-content: center;
-  gap: 8px;
-  margin-top: 28px;
-}
-.hscroll-dots button {
-  width: 7px; height: 7px;
-  border-radius: 50%;
-  background: var(--gray-line);
-  transition: all 0.25s;
-}
-.hscroll-dots button.is-active { background: var(--gold-2); width: 22px; border-radius: 4px; }
-.hscroll-arrow {
-  position: absolute;
-  top: 40%;
-  width: 44px; height: 44px;
-  border-radius: 50%;
-  background: var(--card-bg);
-  border: 1px solid var(--gray-line);
-  display: flex; align-items: center; justify-content: center;
-  z-index: 3;
-}
-.hscroll-arrow.prev { left: -22px; }
-.hscroll-arrow.next { right: -22px; }
-
-/* ==========================================================================
-   About / video block
-   ========================================================================== */
-.about-block { text-align: center; }
-.about-block h2 { font-size: 44px; max-width: 800px; margin: 0 auto 40px; }
-.video-frame {
-  position: relative;
-  border-radius: var(--radius-l);
-  aspect-ratio: 21/9;
-  overflow: hidden;
-}
-.play-btn {
-  position: absolute; top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  width: 76px; height: 76px;
-  border-radius: 50%;
-  background: var(--gold-gradient);
-  display: flex; align-items: center; justify-content: center;
-  color: #221a0c;
-  transition: transform 0.25s var(--ease);
-}
-.play-btn:hover { transform: translate(-50%, -50%) scale(1.08); }
-
-/* ==========================================================================
-   Portfolio circles
-   ========================================================================== */
-.portfolio-track {
-  display: flex;
-  gap: 26px;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  padding: 10px 4px 20px;
-  cursor: grab;
-}
-.portfolio-track:active { cursor: grabbing; }
-.portfolio-circle {
-  scroll-snap-align: start;
-  flex: 0 0 auto;
-  width: 220px; height: 220px;
-  border-radius: 50%;
-  overflow: hidden;
-  position: relative;
-}
-.portfolio-circle .ph { position: absolute; inset: 0; }
-
-/* ==========================================================================
-   Advantages
-   ========================================================================== */
-.adv-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
-}
-.adv-card {
-  background: var(--card-bg);
-  border-radius: var(--radius-m);
-  padding: 30px 26px;
-  border: 1px solid var(--gray-line);
-}
-.adv-card .ic { color: var(--gold-2); margin-bottom: 18px; }
-.adv-card h4 { font-size: 19px; margin-bottom: 10px; font-family: 'Roboto'; font-weight: 500; letter-spacing: 0; }
-.adv-card p { font-size: 14px; color: var(--white-70); }
-.adv-card.license {
-  grid-column: span 2;
-  background: var(--card-bg);
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  padding: 18px;
-}
-.adv-card.license .ph { width: 130px; height: 130px; border-radius: var(--radius-s); flex-shrink: 0; overflow: hidden; }
-.adv-card.license .body h4 { margin-bottom: 8px; }
-.adv-card.license .actions { display: flex; gap: 16px; margin-top: 14px; align-items: center; }
-
-/* ==========================================================================
-   Reviews
-   ========================================================================== */
-.review-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-}
-.review-card {
-  background: var(--card-bg);
-  border: 1px solid var(--gray-line);
-  border-radius: var(--radius-m);
-  padding: 26px;
-}
-.stars { color: var(--gold-2); font-size: 14px; letter-spacing: 2px; margin-bottom: 14px; }
-.review-card p { font-size: 14.5px; color: var(--white-70); margin-bottom: 18px; }
-.review-card .who { font-size: 14px; font-weight: 500; }
-.review-card .who .src { display: block; font-size: 12.5px; color: var(--white-50); font-weight: 300; margin-top: 2px; }
-
-.review-video {
-  display: grid;
-  grid-template-columns: 1fr 1.4fr;
-  gap: 40px;
-  align-items: center;
-}
-.review-video .ph { border-radius: var(--radius-l); aspect-ratio: 3/4; }
-.review-video blockquote p { font-size: 18px; line-height: 1.5; margin-bottom: 16px; }
-
-/* ==========================================================================
-   FAQ (accordion)
-   ========================================================================== */
-.faq-wrap {
-  display: grid;
-  grid-template-columns: 0.8fr 1fr;
-  gap: 50px;
-  align-items: start;
-}
-.faq-item {
-  border-bottom: 1px solid var(--gray-line);
-}
-.faq-q {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 22px 4px;
-  text-align: left;
-  font-size: 16px;
-}
-.faq-q .plus { flex-shrink: 0; margin-left: 20px; transition: transform 0.3s var(--ease); color: var(--gold-2); font-size: 20px; }
-.faq-item.is-open .faq-q .plus { transform: rotate(45deg); }
-.faq-a {
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.35s var(--ease);
-  font-size: 14.5px;
-  color: var(--white-70);
-}
-.faq-a p { padding: 0 4px 22px; }
-
-/* ==========================================================================
-   Blog
-   ========================================================================== */
-.blog-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
-}
-.blog-card .ph { aspect-ratio: 4/3; border-radius: var(--radius-m); margin-bottom: 16px; }
-.blog-card h4 { font-family: 'Roboto'; font-weight: 500; font-size: 15.5px; letter-spacing: 0; margin-bottom: 10px; line-height: 1.35; }
-.blog-card p { font-size: 13.5px; color: var(--white-70); margin-bottom: 12px; }
-
-/* ==========================================================================
-   Contacts
-   ========================================================================== */
-.contacts-wrap {
-  display: grid;
-  grid-template-columns: 0.85fr 1.15fr;
-  gap: 40px;
-}
-.contacts-info dt { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--white-50); margin: 22px 0 6px; }
-.contacts-info dt:first-child { margin-top: 0; }
-.contacts-info dd { font-size: 16px; }
-.contacts-info a:hover { color: var(--gold-2); }
-.map-frame { border-radius: var(--radius-m); overflow: hidden; aspect-ratio: 16/10; }
-.map-frame iframe { width: 100%; height: 100%; border: 0; filter: grayscale(0.4) invert(0.92) contrast(0.9); }
-
-/* ==========================================================================
-   Footer
-   ========================================================================== */
-.site-footer { background: var(--black-2); padding: 70px 0 26px; border-top: 1px solid var(--gray-line); }
-.footer-top {
-  display: grid;
-  grid-template-columns: 1.1fr 0.8fr 0.8fr 0.8fr 1.2fr;
-  gap: 30px;
-  padding-bottom: 46px;
-}
-.footer-brand p { font-size: 13.5px; color: var(--white-50); margin-top: 16px; max-width: 240px; }
-.footer-col h5 { font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--white-50); margin-bottom: 18px; }
-.footer-col li { margin-bottom: 11px; }
-.footer-col a { font-size: 14px; color: var(--white-70); }
-.footer-col a:hover { color: var(--gold-2); }
-.footer-form p { font-size: 13.5px; color: var(--white-70); margin-bottom: 14px; }
-.footer-form-row { display: flex; gap: 10px; }
-.footer-form-row input {
-  flex: 1;
-  background: var(--card-bg);
-  border: 1px solid var(--gray-line);
-  border-radius: 50px;
-  padding: 13px 18px;
-  color: var(--white);
-  font-size: 13.5px;
-}
-.footer-form-row input::placeholder { color: var(--white-50); }
-.footer-form small { display: block; font-size: 11px; color: var(--white-50); margin-top: 10px; line-height: 1.5; }
-.footer-bottom {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 14px;
-  padding-top: 24px;
-  border-top: 1px solid var(--gray-line);
-  font-size: 12.5px;
-  color: var(--white-50);
-}
-.footer-bottom .legal-links { display: flex; gap: 18px; flex-wrap: wrap; }
-.footer-bottom .legal-links a:hover { color: var(--gold-2); }
-.socials { display: flex; gap: 12px; }
-.socials a {
-  width: 34px; height: 34px;
-  border-radius: 50%;
-  border: 1px solid var(--gray-line);
-  display: flex; align-items: center; justify-content: center;
-}
-.socials a:hover { border-color: var(--gold-2); color: var(--gold-2); }
-
-/* ==========================================================================
-   Modals / popup forms
-   ========================================================================== */
-.modal-overlay {
-  position: fixed; inset: 0;
-  background: var(--overlay-80);
-  backdrop-filter: blur(4px);
-  z-index: 900;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.3s var(--ease);
-}
-.modal-overlay.is-open { opacity: 1; pointer-events: auto; }
-.modal-box {
-  position: relative;
-  width: 100%;
-  max-width: 440px;
-  background: var(--black-2);
-  border: 1px solid var(--gray-line);
-  border-radius: var(--radius-m);
-  padding: 40px 36px 34px;
-  transform: translateY(24px) scale(0.98);
-  transition: transform 0.35s var(--ease);
-  max-height: 90vh;
-  overflow-y: auto;
-}
-.modal-overlay.is-open .modal-box { transform: translateY(0) scale(1); }
-.modal-close {
-  position: absolute;
-  top: 18px; right: 18px;
-  width: 34px; height: 34px;
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  color: var(--white-70);
-  transition: all 0.2s;
-}
-.modal-close:hover { background: var(--card-bg); color: var(--white); }
-.modal-eyebrow { font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold-2); margin-bottom: 10px; }
-.modal-box h3 { font-size: 30px; margin-bottom: 10px; }
-.modal-box .modal-sub { font-size: 14px; color: var(--white-70); margin-bottom: 26px; }
-
-.form-field { margin-bottom: 16px; }
-.form-field label { display: block; font-size: 12.5px; color: var(--white-50); margin-bottom: 8px; }
-.form-field input, .form-field textarea, .form-field select {
-  width: 100%;
-  background: var(--card-bg);
-  border: 1px solid var(--gray-line);
-  border-radius: var(--radius-s);
-  padding: 14px 16px;
-  color: var(--white);
-  font-size: 14.5px;
-  transition: border-color 0.2s;
-}
-.form-field input:focus, .form-field textarea:focus, .form-field select:focus { border-color: var(--gold-2); }
-.form-field textarea { resize: vertical; min-height: 90px; }
-.form-field.has-error input { border-color: #d97757; }
-.form-error { display: none; font-size: 12px; color: #e08a6c; margin-top: 6px; }
-.form-field.has-error .form-error { display: block; }
-
-.form-consent { display: flex; align-items: flex-start; gap: 10px; margin: 18px 0 22px; }
-.form-consent input { margin-top: 3px; accent-color: var(--gold-1); }
-.form-consent label { font-size: 12px; color: var(--white-50); line-height: 1.5; }
-.form-consent a { color: var(--white-70); text-decoration: underline; }
-
-.form-status {
-  display: none;
-  align-items: center;
-  gap: 10px;
-  font-size: 13.5px;
-  padding: 12px 14px;
-  border-radius: var(--radius-s);
-  margin-bottom: 16px;
-}
-.form-status.is-success { display: flex; background: rgba(183, 156, 91, 0.14); color: var(--gold-2); }
-.form-status.is-error { display: flex; background: rgba(217, 119, 87, 0.14); color: #e08a6c; }
-
-.modal-success { text-align: center; padding: 20px 0 6px; }
-.modal-success .ic-check {
-  width: 60px; height: 60px;
-  margin: 0 auto 20px;
-  border-radius: 50%;
-  background: var(--gold-gradient);
-  display: flex; align-items: center; justify-content: center;
-  color: #221a0c;
-}
-.modal-success h3 { font-size: 24px; margin-bottom: 10px; }
-.modal-success p { font-size: 14px; color: var(--white-70); margin-bottom: 22px; }
-
-/* Sticky mobile CTA */
-.sticky-cta {
-  display: none;
-  position: fixed;
-  left: 0; right: 0; bottom: 0;
-  z-index: 400;
-  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
-  background: rgba(20,18,16,0.96);
-  border-top: 1px solid var(--gray-line);
+function openModal(name) {
+  const overlay = document.getElementById(`modal-${name}`);
+  if (!overlay) return;
+  overlay.classList.add('is-open');
+  document.body.style.overflow = 'hidden';
+  const input = overlay.querySelector('input, select, textarea');
+  if (input) setTimeout(() => input.focus(), 350);
 }
 
-/* ==========================================================================
-   Responsive
-   ========================================================================== */
-@media (max-width: 1080px) {
-  .container { padding: 0 24px; }
-  .footer-top { grid-template-columns: 1fr 1fr; row-gap: 40px; }
-  .adv-grid { grid-template-columns: repeat(2, 1fr); }
-  .adv-card.license { grid-column: span 2; }
-  .review-grid { grid-template-columns: repeat(2, 1fr); }
-  .blog-grid { grid-template-columns: repeat(2, 1fr); }
-  .perk-row, .perk-row.perks-6 { grid-template-columns: repeat(3, 1fr); }
+function closeModal(overlay) {
+  if (!overlay) return;
+  overlay.classList.remove('is-open');
+  document.body.style.overflow = '';
+  setTimeout(() => {
+    const form = overlay.querySelector('form');
+    const success = overlay.querySelector('[data-success-view]');
+    const content = overlay.querySelector('.modal-content-inner');
+    if (form) form.reset();
+    if (success) success.hidden = true;
+    if (content) content.hidden = false;
+  }, 300);
 }
 
-@media (max-width: 900px) {
-  .main-nav { display: none; }
-  .header-note { display: none; }
-  .burger-btn { display: flex; }
-  .mobile-nav { display: block; }
-  .site-header { height: var(--header-h-mobile); }
-  .header-inner { padding: 0 20px; gap: 14px; }
-  .header-right { gap: 12px; }
-  .header-phone { display: none; }
-  .logo-text .l1 { font-size: 16px; }
-  .logo-text .l2 { font-size: 8.5px; }
-  .btn.header-cta { padding: 11px 18px; font-size: 13px; }
-
-  .breadcrumbs { padding-top: calc(var(--header-h-mobile) + 18px); font-size: 11px; }
-  .page-hero, .home-hero { grid-template-columns: 1fr; gap: 26px; }
-  .page-hero h1 { font-size: 32px; }
-  .section { padding: 60px 0; }
-  .section--tight { padding: 44px 0; }
-  .section-head h2 { font-size: 28px; }
-  .section-head { margin-bottom: 36px; }
-
-  .perk-row, .perk-row.perks-6 { grid-template-columns: repeat(2, 1fr); gap: 14px; }
-  .svc-grid { grid-template-columns: repeat(2, 1fr); gap: 14px; }
-  .spotlight, .hscroll .spotlight { grid-template-columns: 1fr; gap: 26px; }
-  .spotlight-media { max-width: 320px; margin: 0 auto; }
-  .about-block h2 { font-size: 28px; }
-  .adv-grid { grid-template-columns: 1fr; }
-  .adv-card.license { grid-column: span 1; flex-direction: column; text-align: center; }
-  .review-grid { grid-template-columns: 1fr; }
-  .review-video { grid-template-columns: 1fr; }
-  .faq-wrap { grid-template-columns: 1fr; gap: 20px; }
-  .blog-grid { grid-template-columns: repeat(2, 1fr); gap: 14px; }
-  .contacts-wrap { grid-template-columns: 1fr; }
-  .footer-top { grid-template-columns: 1fr; gap: 30px; }
-  .footer-bottom { flex-direction: column; align-items: flex-start; }
-  .hscroll-arrow { display: none; }
-  .portfolio-circle { width: 160px; height: 160px; }
-  .modal-box { padding: 30px 22px 26px; }
-  .modal-box h3 { font-size: 24px; }
-  body { padding-bottom: 0; }
+/* ---- Отправка форм (booking / callback / footer) ---- */
+function initAjaxForms() {
+  document.querySelectorAll('[data-ajax-form]').forEach(bindAjaxForm);
+  const footerForm = document.getElementById('footerQuickForm');
+  if (footerForm) bindAjaxForm(footerForm, 'Вопрос из футера');
 }
 
-@media (max-width: 520px) {
-  .svc-grid { grid-template-columns: repeat(2, 1fr); }
-  .blog-grid { grid-template-columns: 1fr 1fr; }
-  .page-hero h1 { font-size: 27px; }
-  .container { padding: 0 16px; }
+function bindAjaxForm(form, forcedName) {
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!validateForm(form)) return;
+
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const statusEl = form.querySelector('[data-status]');
+    const formName = forcedName || form.dataset.formName || 'Заявка с сайта';
+
+    submitBtn.disabled = true;
+    const originalText = submitBtn.textContent;
+    submitBtn.textContent = 'Отправляем...';
+    if (statusEl) { statusEl.className = 'form-status'; statusEl.textContent = ''; }
+
+    const data = new FormData(form);
+    data.append('_form', formName);
+    data.append('_page', document.title);
+
+    try {
+      if (FORM_ENDPOINT.includes('YOUR_FORM_ID')) {
+        // Демо-режим: форма ещё не подключена к бэкенду.
+        await new Promise(r => setTimeout(r, 600));
+        console.info('[demo] Форма пока не подключена. Данные формы:', Object.fromEntries(data));
+      } else {
+        const res = await fetch(FORM_ENDPOINT, {
+          method: 'POST',
+          body: data,
+          headers: { Accept: 'application/json' },
+        });
+        if (!res.ok) throw new Error('Request failed');
+      }
+
+      const overlay = form.closest('[data-modal]');
+      if (overlay) {
+        overlay.querySelector('.modal-content-inner').hidden = true;
+        overlay.querySelector('[data-success-view]').hidden = false;
+      } else if (statusEl) {
+        statusEl.classList.add('is-success');
+        statusEl.textContent = 'Спасибо! Мы скоро свяжемся с вами.';
+        form.reset();
+      }
+    } catch (err) {
+      if (statusEl) {
+        statusEl.classList.add('is-error');
+        statusEl.textContent = 'Не удалось отправить. Попробуйте ещё раз или позвоните нам.';
+      }
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalText;
+    }
+  });
+}
+
+function validateForm(form) {
+  let valid = true;
+  form.querySelectorAll('[required]').forEach(field => {
+    const wrap = field.closest('.form-field') || field.closest('.form-consent');
+    let ok = true;
+    if (field.type === 'checkbox') ok = field.checked;
+    else if (field.type === 'tel') ok = field.value.replace(/\D/g, '').length >= 9;
+    else ok = field.value.trim().length > 1;
+
+    if (!ok) {
+      valid = false;
+      if (wrap && wrap.classList.contains('form-field')) wrap.classList.add('has-error');
+    } else if (wrap && wrap.classList.contains('form-field')) {
+      wrap.classList.remove('has-error');
+    }
+  });
+  return valid;
+}
+
+/* ---- Простая маска телефона +375 ---- */
+function initPhoneMask() {
+  document.querySelectorAll('input[type="tel"]').forEach(input => {
+    input.addEventListener('input', () => {
+      let digits = input.value.replace(/\D/g, '');
+      if (digits.startsWith('375')) digits = digits.slice(3);
+      digits = digits.slice(0, 9);
+      let out = '+375';
+      if (digits.length) out += ' (' + digits.slice(0, 2);
+      if (digits.length >= 2) out += ') ' + digits.slice(2, 5);
+      if (digits.length >= 5) out += '-' + digits.slice(5, 7);
+      if (digits.length >= 7) out += '-' + digits.slice(7, 9);
+      input.value = out;
+    });
+  });
+}
+
+/* ---- FAQ аккордеон ---- */
+function initFaq() {
+  document.querySelectorAll('.faq-item').forEach(item => {
+    const q = item.querySelector('.faq-q');
+    const a = item.querySelector('.faq-a');
+    q.addEventListener('click', () => {
+      const isOpen = item.classList.contains('is-open');
+      item.closest('.faq-wrap')?.querySelectorAll('.faq-item.is-open').forEach(other => {
+        if (other !== item) {
+          other.classList.remove('is-open');
+          other.querySelector('.faq-a').style.maxHeight = null;
+        }
+      });
+      item.classList.toggle('is-open', !isOpen);
+      a.style.maxHeight = !isOpen ? a.scrollHeight + 'px' : null;
+    });
+  });
+}
+
+/* ---- Горизонтальные карусели услуг (карточки для скролла) ---- */
+function initHScroll() {
+  document.querySelectorAll('.hscroll-wrap').forEach(wrap => {
+    const track = wrap.querySelector('.hscroll');
+    const dotsWrap = wrap.querySelector('.hscroll-dots');
+    const prev = wrap.querySelector('.hscroll-arrow.prev');
+    const next = wrap.querySelector('.hscroll-arrow.next');
+    if (!track) return;
+    const slides = track.children.length;
+
+    if (dotsWrap) {
+      dotsWrap.innerHTML = '';
+      for (let i = 0; i < slides; i++) {
+        const b = document.createElement('button');
+        if (i === 0) b.classList.add('is-active');
+        b.addEventListener('click', () => track.scrollTo({ left: track.clientWidth * i, behavior: 'smooth' }));
+        dotsWrap.appendChild(b);
+      }
+    }
+
+    const updateDots = () => {
+      if (!dotsWrap) return;
+      const idx = Math.round(track.scrollLeft / track.clientWidth);
+      [...dotsWrap.children].forEach((d, i) => d.classList.toggle('is-active', i === idx));
+    };
+    track.addEventListener('scroll', () => requestAnimationFrame(updateDots));
+
+    prev?.addEventListener('click', () => track.scrollBy({ left: -track.clientWidth, behavior: 'smooth' }));
+    next?.addEventListener('click', () => track.scrollBy({ left: track.clientWidth, behavior: 'smooth' }));
+
+    enableDragScroll(track);
+  });
+}
+
+function initPortfolioDrag() {
+  document.querySelectorAll('.portfolio-track').forEach(enableDragScroll);
+}
+
+function enableDragScroll(el) {
+  let isDown = false, startX, scrollLeft;
+  el.addEventListener('mousedown', (e) => {
+    isDown = true;
+    startX = e.pageX - el.offsetLeft;
+    scrollLeft = el.scrollLeft;
+  });
+  ['mouseleave', 'mouseup'].forEach(evt => el.addEventListener(evt, () => isDown = false));
+  el.addEventListener('mousemove', (e) => {
+    if (!isDown) return;
+    e.preventDefault();
+    const x = e.pageX - el.offsetLeft;
+    el.scrollLeft = scrollLeft - (x - startX) * 1.4;
+  });
+}
+
+/* ---- Пилюли-фильтры (визуальное переключение, без реальной фильтрации данных) ---- */
+function initPillFilters() {
+  document.querySelectorAll('.pill-row').forEach(row => {
+    row.querySelectorAll('.pill').forEach(pill => {
+      pill.addEventListener('click', () => {
+        row.querySelectorAll('.pill').forEach(p => p.classList.remove('is-active'));
+        pill.classList.add('is-active');
+        const targetSelector = row.dataset.target;
+        const groupWrap = targetSelector ? document.querySelector(targetSelector) : row.nextElementSibling;
+        if (groupWrap && groupWrap.classList.contains('hscroll')) {
+          const idx = [...row.children].indexOf(pill);
+          groupWrap.scrollTo({ left: groupWrap.clientWidth * idx, behavior: 'smooth' });
+        }
+      });
+    });
+  });
 }
